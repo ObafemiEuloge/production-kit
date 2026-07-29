@@ -1,8 +1,21 @@
+# Modele de deploiement continu.
+#
+# Ce depot est une reference technique, pas une application deployable.
+# Le declenchement automatique est donc desactive : le workflow ne s'execute
+# que manuellement, depuis l'onglet Actions.
+#
+# Dans un projet reel, remplacer le bloc "on" par :
+#
+#   on:
+#     push:
+#       branches: [main]
+#
+# Secrets a definir dans Settings > Secrets and variables > Actions :
+#   DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_PORT, HEALTHCHECK_URL
+
 name: Deploiement en production
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
