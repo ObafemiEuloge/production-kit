@@ -1,0 +1,79 @@
+name: Deploiement en production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  qualite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20, cache: npm}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --ci
+      # Echoue si une dependance presente une vulnerabilite elevee
+      - run: npm audit --audit-level=high
+
+  deploiement:
+    needs: qualite
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connexion SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Deploiement sans interruption
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -p "$PORT" "$USER@$HOST" bash -euo pipefail << 'REMOTE'
+            cd /srv/app
+            # Sauvegarde du commit courant pour permettre un retour arriere
+            git rev-parse HEAD > /tmp/previous_sha
+            git fetch --all --quiet
+            git reset --hard origin/main --quiet
+            docker compose -f docker/docker-compose.prod.yml build app
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps app
+            docker image prune -f
+          REMOTE
+
+      - name: Controle de sante
+        env:
+          URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$URL" || true)
+            if [ "$code" = "200" ]; then echo "Service operationnel."; exit 0; fi
+            echo "Tentative $i sur 12, code $code"
+            sleep 10
+          done
+          echo "Le service ne repond pas apres deux minutes." >&2
+          exit 1
+
+      - name: Retour arriere automatique
+        if: failure()
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          ssh -p "$PORT" "$USER@$HOST" bash -euo pipefail << 'REMOTE'
+            cd /srv/app
+            git reset --hard "$(cat /tmp/previous_sha)" --quiet
+            docker compose -f docker/docker-compose.prod.yml up -d --no-deps --build app
+          REMOTE
+          echo "Version precedente restauree."

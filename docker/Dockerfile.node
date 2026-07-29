@@ -1,0 +1,27 @@
+# Build multi-stage pour application Node. Image finale minimale, utilisateur non root.
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Ne jamais exécuter en root
+RUN addgroup -g 1001 -S nodejs && adduser -S appuser -u 1001
+COPY --from=deps  --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/package.json ./
+USER appuser
+EXPOSE 3000
+# Le healthcheck permet a Docker et au reverse proxy de savoir si le conteneur repond
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+CMD ["node", "dist/main.js"]
