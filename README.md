@@ -103,9 +103,9 @@ Ces fichiers sont des points de départ éprouvés, pas des configurations unive
 
 ## Contexte
 
-Je suis développeur fullstack et DevOps, en remote depuis le Bénin, fuseau GMT+1.
+Je suis développeur backend Python (Django, FastAPI), en remote depuis le Bénin, fuseau GMT+1.
 
-Je conçois, développe et exploite des applications web de bout en bout. Les dépôts de mes projets clients sont privés, ce qui explique qu'ils n'apparaissent pas ici. Ce dépôt montre la partie qui se transpose d'un projet à l'autre : la mise en production et son exploitation.
+Je conçois, développe et exploite des plateformes web en production. Les dépôts de mes projets clients sont privés, ce qui explique qu'ils n'apparaissent pas ici. Ce dépôt montre la partie qui se transpose d'un projet à l'autre : la mise en production et son exploitation.
 
 Portfolio : [obafemiagnoun.cloud](https://obafemiagnoun.cloud)
 LinkedIn : [obafemieuloge](https://linkedin.com/in/obafemieuloge)
